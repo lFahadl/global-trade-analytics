@@ -6,6 +6,28 @@ __pycache__/
 # C extensions
 *.so
 
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+Global-Trade-Analytics.json
+terraform.tfvars
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Terraform directory
+.terraform/
+
+# Terraform files
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform/
+.terraform.lock.hcl
+
 # Distribution / packaging
 .Python
 build/
@@ -172,3 +194,6 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Credentials
+*.json
