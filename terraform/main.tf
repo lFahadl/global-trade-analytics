@@ -16,21 +16,9 @@ resource "google_storage_bucket" "data_lake" {
   }
 }
 
-# Create raw, processed, and curated data bucket folders
+# Create raw data bucket folder (only keeping this one as others are redundant)
 resource "google_storage_bucket_object" "raw_data_folder" {
   name    = "raw/"
-  bucket  = google_storage_bucket.data_lake.name
-  content = " "
-}
-
-resource "google_storage_bucket_object" "processed_data_folder" {
-  name    = "processed/"
-  bucket  = google_storage_bucket.data_lake.name
-  content = " "
-}
-
-resource "google_storage_bucket_object" "curated_data_folder" {
-  name    = "curated/"
   bucket  = google_storage_bucket.data_lake.name
   content = " "
 }
@@ -40,18 +28,21 @@ resource "google_bigquery_dataset" "raw_data" {
   dataset_id = "raw_trade_data"
   location   = var.region
   description = "Raw international trade data"
+  delete_contents_on_destroy = true
 }
 
 resource "google_bigquery_dataset" "processed_data" {
   dataset_id = "processed_trade_data"
   location   = var.region
   description = "Processed international trade data"
+  delete_contents_on_destroy = true
 }
 
 resource "google_bigquery_dataset" "analytics" {
   dataset_id = "trade_analytics"
   location   = var.region
   description = "Trade analytics data models"
+  delete_contents_on_destroy = true
 }
 
 # Service account for data pipeline
@@ -109,4 +100,10 @@ resource "google_compute_instance" "pipeline_vm" {
   metadata = {
     enable-oslogin = "TRUE"
   }
+}
+
+# Output the bucket name for use in scripts
+output "bucket_name" {
+  value       = google_storage_bucket.data_lake.name
+  description = "The name of the GCS bucket created for the data lake"
 }

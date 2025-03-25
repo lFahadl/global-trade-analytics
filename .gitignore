@@ -197,3 +197,15 @@ cython_debug/
 
 # Credentials
 *.json
+
+# Data files
+*.csv
+data/
+data/*
+test_data/
+test_data/*
+
+# Project documentation files
+program-flow.txt
+project-improvement-or-suggestions.txt
+common-errors.txt
