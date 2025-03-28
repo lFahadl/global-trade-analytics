@@ -157,6 +157,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.streamlit/config.toml
 
 # Spyder project settings
 .spyderproject
@@ -197,6 +198,12 @@ cython_debug/
 
 # Credentials
 *.json
+
+# Debug tools
+debug_tools/
+
+# Documentation files
+docs/
 
 # Data files
 *.csv

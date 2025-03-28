@@ -1,5 +1,36 @@
-dlt[bigquery]>=1.8.1
+# Global Trade Analytics - Requirements
+# This file contains all dependencies required for the project
+
+# ===== Core Data Processing =====
+# Data processing and manipulation
 pandas>=2.0.0
-google-cloud-storage>=2.10.0
-google-cloud-bigquery>=3.11.0
-python-dotenv>=1.0.0
+numpy>=1.24.0
+pyarrow>=12.0.0  # For efficient data transfer with Arrow format
+
+# ===== Google Cloud Platform =====
+# GCP Storage and BigQuery
+google-cloud-storage>=2.10.0  # For GCS operations
+google-cloud-bigquery>=3.11.0  # For BigQuery operations
+google-cloud-bigquery-storage>=2.30.0  # For BigQuery Storage API (faster queries)
+google-oauth2-tool>=0.0.3  # For authentication
+
+# ===== Data Loading & Transformation =====
+# Data loading toolkit
+dlt[bigquery]>=1.8.1  # Data loading tool with BigQuery support
+
+# ===== Environment & Configuration =====
+python-dotenv>=1.0.0  # For managing environment variables
+
+# ===== Dashboard & Visualization =====
+streamlit>=1.22.0  # For interactive dashboards
+plotly>=5.13.0  # For interactive visualizations
+streamlit-option-menu>=0.3.2  # For enhanced Streamlit navigation
+
+# ===== Testing =====
+pytest>=7.3.1  # For unit testing
+pytest-cov>=4.1.0  # For test coverage
+
+# ===== Development Tools =====
+black>=23.3.0  # Code formatter
+flake8>=6.0.0  # Linter
+isort>=5.12.0  # Import sorter

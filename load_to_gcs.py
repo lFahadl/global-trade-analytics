@@ -10,16 +10,8 @@ import time
 # Load environment variables
 load_dotenv()
 
-# Configuration
-DATA_DIR = Path("data")
-TEST_DATA_DIR = Path("test_data")
-GCS_BUCKET = os.getenv("GCS_BUCKET_NAME")
-GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
-GCP_CREDENTIALS_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-MAX_WORKERS = 4  # Adjust based on your machine's capabilities
-
 # Initialize GCS client
-storage_client = storage.Client.from_service_account_json(GCP_CREDENTIALS_PATH)
+storage_client = storage.Client.from_service_account_json(GOOGLE_APPLICATION_CREDENTIALS)
 
 # Define a function to compress a file with gzip
 def compress_file(file_path):
@@ -83,6 +75,21 @@ def upload_to_gcs(bucket_name, source_file_path, destination_blob_name):
         print(f"Error uploading {source_file_path}: {e}")
         return False
 
+# Define a function to check if a file exists in GCS
+def file_exists_in_gcs(bucket_name, blob_name):
+    """Check if a file exists in the GCS bucket.
+    
+    Args:
+        bucket_name: Name of the GCS bucket
+        blob_name: Path to the file in the bucket
+        
+    Returns:
+        True if file exists, False otherwise
+    """
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+    return blob.exists()
+
 # Define a function to process a single file (compress and upload)
 def process_file(csv_file):
     """Process a single CSV file: compress and upload to GCS.
@@ -91,19 +98,25 @@ def process_file(csv_file):
         csv_file: Path to the CSV file to process
         
     Returns:
-        Tuple of (csv_file, success)
+        Tuple of (csv_file, success, status)
     """
     try:
         print(f"Processing {csv_file}...")
+        
+        # Define destination blob name
+        destination_blob_name = f"raw/{csv_file.stem}.gz"
+        
+        # Check if file already exists in GCS
+        if file_exists_in_gcs(GCS_BUCKET_NAME, destination_blob_name):
+            print(f"File {destination_blob_name} already exists in bucket {GCS_BUCKET_NAME}, skipping...")
+            return csv_file, True, "already_exists"
         
         # Compress the file
         compressed_file_path = compress_file(str(csv_file))
         
         # Upload the compressed file with .gz extension
-        destination_blob_name = f"raw/{csv_file.stem}.gz"
-        
         success = upload_to_gcs(
-            bucket_name=GCS_BUCKET,
+            bucket_name=GCS_BUCKET_NAME,
             source_file_path=compressed_file_path,
             destination_blob_name=destination_blob_name
         )
@@ -113,10 +126,10 @@ def process_file(csv_file):
             os.remove(compressed_file_path)
             print(f"Temporary compressed file {compressed_file_path} removed")
         
-        return csv_file, success
+        return csv_file, success, "uploaded"
     except Exception as e:
         print(f"Error processing {csv_file}: {e}")
-        return csv_file, False
+        return csv_file, False, "error"
 
 # Main function to load all CSV files to GCS
 def load_to_gcs(use_test_data=False):
@@ -133,11 +146,11 @@ def load_to_gcs(use_test_data=False):
     
     # Create the bucket if it doesn't exist
     try:
-        bucket = storage_client.get_bucket(GCS_BUCKET)
-        print(f"Bucket {GCS_BUCKET} already exists")
+        bucket = storage_client.get_bucket(GCS_BUCKET_NAME)
+        print(f"Bucket {GCS_BUCKET_NAME} already exists")
     except Exception:
-        bucket = storage_client.create_bucket(GCS_BUCKET)
-        print(f"Bucket {GCS_BUCKET} created")
+        bucket = storage_client.create_bucket(GCS_BUCKET_NAME)
+        print(f"Bucket {GCS_BUCKET_NAME} created")
     
     # Get list of CSV files
     csv_files = list(data_directory.glob("*.csv"))
@@ -150,6 +163,7 @@ def load_to_gcs(use_test_data=False):
     
     # Process files in parallel
     successful_files = 0
+    skipped_files = 0
     failed_files = 0
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -160,9 +174,12 @@ def load_to_gcs(use_test_data=False):
         for future in concurrent.futures.as_completed(future_to_file):
             csv_file = future_to_file[future]
             try:
-                _, success = future.result()
+                _, success, status = future.result()
                 if success:
-                    successful_files += 1
+                    if status == "already_exists":
+                        skipped_files += 1
+                    else:
+                        successful_files += 1
                 else:
                     failed_files += 1
             except Exception as e:
@@ -173,7 +190,8 @@ def load_to_gcs(use_test_data=False):
     elapsed_time = time.time() - start_time
     print(f"\nProcessing complete!")
     print(f"Total files: {total_files}")
-    print(f"Successfully processed: {successful_files}")
+    print(f"Successfully uploaded: {successful_files}")
+    print(f"Skipped (already exists): {skipped_files}")
     print(f"Failed: {failed_files}")
     print(f"Total time: {elapsed_time:.2f} seconds")
 
