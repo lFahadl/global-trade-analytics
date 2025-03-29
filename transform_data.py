@@ -9,6 +9,13 @@ import argparse
 # Load environment variables
 load_dotenv()
 
+# Set environment variables
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+RAW_DATASET = os.getenv("RAW_DATASET")
+COMBINED_DATASET = os.getenv("COMBINED_DATASET")
+PROCESSED_DATASET = os.getenv("PROCESSED_DATASET")
+ANALYTICS_DATASET = os.getenv("ANALYTICS_DATASET")
+
 # Get the location of datasets
 def get_dataset_location(dataset_id):
     """Get the location of a dataset."""
@@ -238,7 +245,7 @@ def create_raw_data_views(combined_table):
     
     # 2. Country yearly aggregates
     country_year_metrics_query = f"""
-    CREATE OR REPLACE VIEW `{GCP_PROJECT_ID}.{RAW_DATASET}.raw_country_year_metrics` AS
+    CREATE OR REPLACE TABLE `{GCP_PROJECT_ID}.{RAW_DATASET}.raw_country_year_metrics` AS
     SELECT
       country_id,
       year,
@@ -502,6 +509,20 @@ def create_transformation_views():
 def create_presentation_views():
     """Create presentation layer views for the dashboard."""
     print("Creating presentation layer views...")
+    
+    # 0. Global yearly metrics view (for dashboard performance)
+    global_metrics_mv_query = f"""
+    CREATE OR REPLACE VIEW `{GCP_PROJECT_ID}.{ANALYTICS_DATASET}.v_global_yearly_metrics` AS
+    SELECT
+      year,
+      SUM(total_exports) as global_exports,
+      SUM(total_imports) as global_imports,
+      SUM(total_exports) as global_trade_volume, -- Use global exports as the measure
+      AVG(eci) as avg_eci
+    FROM `{GCP_PROJECT_ID}.{RAW_DATASET}.raw_country_year_metrics`
+    GROUP BY year;
+    """
+    execute_query(global_metrics_mv_query)
     
     # 1. Economic Complexity vs. Trade Balance Trends
     eci_balance_trends_query = f"""
