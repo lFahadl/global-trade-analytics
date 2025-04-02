@@ -3,6 +3,16 @@
 import os
 from typing import override
 import streamlit as st
+
+# IMPORTANT: Set page configuration must be the first Streamlit command
+st.set_page_config(
+    page_title="Global Trade Analytics Dashboard",
+    page_icon="🌐",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# Now import the rest of the libraries
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -23,34 +33,32 @@ COMBINED_DATASET = os.environ.get('COMBINED_DATASET')
 PROCESSED_DATASET = os.environ.get('PROCESSED_DATASET')
 ANALYTICS_DATASET = os.environ.get('ANALYTICS_DATASET')
 
-# Create credentials object
-credentials = service_account.Credentials.from_service_account_file(
-    GOOGLE_APPLICATION_CREDENTIALS,
-    scopes=["https://www.googleapis.com/auth/cloud-platform"],
-)
+# Create credentials and BigQuery client with caching
+@st.cache_resource(ttl=3600)  # Cache for 1 hour
+def get_bigquery_client():
+    """Create and return a cached BigQuery client"""
+    credentials = service_account.Credentials.from_service_account_file(
+        GOOGLE_APPLICATION_CREDENTIALS,
+        scopes=["https://www.googleapis.com/auth/cloud-platform"],
+    )
+    return bigquery.Client(credentials=credentials, project=GCP_PROJECT_ID)
 
 # Create BigQuery client
-client = bigquery.Client(credentials=credentials, project=GCP_PROJECT_ID)
+client = get_bigquery_client()
 
-# Get dataset location
+# Get dataset location with caching
+@st.cache_data(ttl=86400)  # Cache for 24 hours
 def get_dataset_location():
     try:
         dataset = client.get_dataset(f"{GCP_PROJECT_ID}.{RAW_DATASET}")
         return dataset.location
     except Exception as e:
-        st.error(f"Error getting dataset location: {e}")
+        # Use st.warning instead of st.error to avoid early Streamlit commands
+        # This will be displayed only when the function is actually called
         return "US"  # Default to US if we can't determine the location
 
 # Dataset location
 DATASET_LOCATION = get_dataset_location()
-
-# Set page configuration
-st.set_page_config(
-    page_title="Global Trade Analytics Dashboard",
-    page_icon="🌐",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
 
 # Dashboard title
 st.title("Global Trade Analytics Dashboard")
@@ -64,38 +72,85 @@ st.sidebar.title("Navigation")
 # )
 page = "Overview"  # Only show Overview page for now
 
-# Function to load data from BigQuery
-def load_data(query):
+# Function to load data from BigQuery with caching
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def load_data(query, query_id=None):
+    """Load data from BigQuery with caching.
+    
+    Args:
+        query: SQL query to execute
+        query_id: Optional identifier for the query for better cache management
+        
+    Returns:
+        DataFrame with query results
+    """
     try:
         df = client.query(query, location=DATASET_LOCATION).to_dataframe()
         return df
     except Exception as e:
-        st.error(f"Error loading data: {e}")
+        # Log the error but don't use st.error here to avoid early Streamlit commands
+        # We'll check for empty dataframes later and show errors then
+        print(f"Error loading data: {e}")
         return pd.DataFrame()
 
-# Function to get available years
+# Function to get available years with caching
+@st.cache_data(ttl=86400)  # Cache for 24 hours
 def get_available_years():
     query = f"""
     SELECT DISTINCT year 
     FROM `{GCP_PROJECT_ID}.{COMBINED_DATASET}.combined_trade_data`
     ORDER BY year
     """
-    years_df = load_data(query)
+    years_df = load_data(query, "available_years")
     if not years_df.empty:
         return years_df['year'].tolist()
     return []
 
-# Function to get available countries
+# Function to get available countries with caching
+@st.cache_data(ttl=86400)  # Cache for 24 hours
 def get_available_countries():
     query = f"""
     SELECT DISTINCT country_id 
     FROM `{GCP_PROJECT_ID}.{COMBINED_DATASET}.combined_trade_data`
     ORDER BY country_id
     """
-    countries_df = load_data(query)
+    countries_df = load_data(query, "available_countries")
     if not countries_df.empty:
         return countries_df['country_id'].tolist()
     return []
+
+# Load global metrics data with caching (this loads all years at once)
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def load_global_metrics():
+    query = f"""
+    SELECT *
+    FROM `{GCP_PROJECT_ID}.{ANALYTICS_DATASET}.v_global_yearly_metrics`
+    ORDER BY year
+    """
+    return load_data(query, "global_metrics")
+
+# Load top countries by trade volume with caching (for a specific year)
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def load_top_countries(year):
+    query = f"""
+    SELECT
+      country_id,
+      total_exports + total_imports as trade_volume,
+      total_exports,
+      total_imports,
+      eci
+    FROM `{GCP_PROJECT_ID}.{RAW_DATASET}.raw_country_year_metrics`
+    WHERE year = {year}
+    ORDER BY trade_volume DESC
+    LIMIT 15
+    """
+    return load_data(query, f"top_countries_{year}")
+
+# Add a cache clearing button in the sidebar
+if st.sidebar.button("Clear Cache"):
+    # Clear all st.cache_data caches
+    st.cache_data.clear()
+    st.success("Cache cleared successfully!")
 
 # Cache available years and countries
 available_years = get_available_years()
@@ -111,13 +166,10 @@ selected_year = st.sidebar.selectbox("Select Year", available_years, index=len(a
 if page == "Overview":
     st.header("Global Trade Overview")
     
-    # Load global metrics data
-    global_metrics_query = f"""
-    SELECT *
-    FROM `{GCP_PROJECT_ID}.{ANALYTICS_DATASET}.v_global_yearly_metrics`
-    ORDER BY year
-    """
-    global_metrics_df = load_data(global_metrics_query)
+    # Show loading spinner while data is being loaded
+    with st.spinner("Loading global metrics..."):
+        # Load global metrics (all years at once, cached)
+        global_metrics_df = load_global_metrics()
     
     if not global_metrics_df.empty:
         # Create metrics for the selected year
@@ -129,8 +181,6 @@ if page == "Overview":
             
             col1, col2, col3 = st.columns(3)
             
-            
-            
             # Global Trade Volume Trend
             st.subheader("Global Trade Volume Trend")
             fig = px.line(
@@ -139,7 +189,6 @@ if page == "Overview":
                 y="global_trade_volume",  # Plot only global exports (representing volume)
                 labels={"value": "Global Trade Volume (USD)", "year": "Year"}, # Updated label
                 title="Global Trade Volume Over Time"
-                # Removed color_discrete_map as it's a single line now
             )
             fig.update_layout(showlegend=False) # Legend is not needed for a single line
             st.plotly_chart(fig, use_container_width=True)
@@ -155,21 +204,10 @@ if page == "Overview":
             )
             st.plotly_chart(fig, use_container_width=True)
             
-            # Top Countries by Trade Volume
+            # Load and display top countries (specific to selected year, cached per year)
             st.subheader("Top Countries by Trade Volume")
-            top_countries_query = f"""
-            SELECT
-              country_id,
-              total_exports + total_imports as trade_volume,
-              total_exports,
-              total_imports,
-              eci
-            FROM `{GCP_PROJECT_ID}.{RAW_DATASET}.raw_country_year_metrics`
-            WHERE year = {selected_year}
-            ORDER BY trade_volume DESC
-            LIMIT 15
-            """
-            top_countries_df = load_data(top_countries_query)
+            with st.spinner(f"Loading top countries for {selected_year}..."):
+                top_countries_df = load_top_countries(selected_year)
             
             if not top_countries_df.empty:
                 fig = px.bar(
@@ -187,9 +225,6 @@ if page == "Overview":
             st.warning(f"No data available for the selected year: {selected_year}")
     else:
         st.error("Failed to load global metrics data. Please check your BigQuery connection.")
-
-
-# The following pages are commented out for later refinement
 
 # Economic Complexity vs. Trade Balance page
 # elif page == "Economic Complexity vs. Trade Balance":

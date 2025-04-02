@@ -143,6 +143,7 @@ python run_tests.py
 
 - **Dashboard Performance Optimization**: Implemented a two-step approach using regular tables and materialized views to reduce query data scan from 2.22 GB to a few KB
 - **Dashboard Simplification**: Temporarily commented out additional dashboard pages that require improved data models for optimal performance (to be implemented in future iterations)
+- **Dashboard Caching**: Implemented Streamlit's caching (`@st.cache_data`) for data loading functions on the Overview page to improve performance and reduce redundant BigQuery queries.
 - **Data Accuracy Fix (Global Metrics)**: Corrected logic in `v_global_yearly_metrics` view; removed incorrect division by 2 as summing country-level totals directly provides global aggregates.
 - **BigQuery Materialized View Workaround**: Created regular tables for complex aggregations (with COUNT DISTINCT) to overcome BigQuery materialized view limitations
 - **Optimized Data Storage**: Created a combined table with range partitioning by year and clustering by country_id and product_id
