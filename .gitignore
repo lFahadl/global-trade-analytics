@@ -213,3 +213,9 @@ data/
 data/*
 test_data/
 test_data/*
+
+# Dagster files
+.tmp_dagster_home*/
+dagster_deployment/.tmp_dagster_home*/
+dagster_deployment/storage/
+dagster_home/
