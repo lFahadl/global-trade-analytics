@@ -1,0 +1,38 @@
+telemetry:
+  enabled: false
+
+# Use environment variables to conditionally configure storage
+# DAGSTER_IS_DEV_CLI=1 is set when running with 'dagster dev'
+storage:
+  # postgres:
+  #   postgres_db:
+  #     username:
+  #       env: DAGSTER_POSTGRES_USER
+  #     password:
+  #       env: DAGSTER_POSTGRES_PASSWORD
+  #     hostname: docker_example_postgresql
+  #     db_name:
+  #       env: DAGSTER_POSTGRES_DB
+  #     port: 5432
+  sqlite:
+    base_dir: /tmp/dagster/storage
+
+run_coordinator:
+  module: dagster.core.run_coordinator
+  class: QueuedRunCoordinator
+
+run_launcher:
+  # module: dagster_docker
+  # class: DockerRunLauncher
+  # config:
+  #   env_vars:
+  #     - DAGSTER_POSTGRES_USER
+  #     - DAGSTER_POSTGRES_PASSWORD
+  #     - DAGSTER_POSTGRES_DB
+  #   network: docker_example_network
+  #   container_kwargs:
+  #     volumes: ["/tmp/io_manager_storage:/tmp/io_manager_storage"]
+  #   image:
+  #     env: DAGSTER_CURRENT_IMAGE
+  module: dagster.core.launcher
+  class: DefaultRunLauncher

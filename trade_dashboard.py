@@ -23,13 +23,12 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 # Get environment variables
 GCP_PROJECT_ID = os.environ.get('GCP_PROJECT_ID')
 GOOGLE_APPLICATION_CREDENTIALS = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
 RAW_DATASET = os.environ.get('RAW_DATASET')
-COMBINED_DATASET = os.environ.get('COMBINED_DATASET')
 PROCESSED_DATASET = os.environ.get('PROCESSED_DATASET')
 ANALYTICS_DATASET = os.environ.get('ANALYTICS_DATASET')
 
@@ -98,7 +97,7 @@ def load_data(query, query_id=None):
 def get_available_years():
     query = f"""
     SELECT DISTINCT year 
-    FROM `{GCP_PROJECT_ID}.{COMBINED_DATASET}.combined_trade_data`
+    FROM `{GCP_PROJECT_ID}.{PROCESSED_DATASET}.combined_trade_data`
     ORDER BY year
     """
     years_df = load_data(query, "available_years")
@@ -111,7 +110,7 @@ def get_available_years():
 def get_available_countries():
     query = f"""
     SELECT DISTINCT country_id 
-    FROM `{GCP_PROJECT_ID}.{COMBINED_DATASET}.combined_trade_data`
+    FROM `{GCP_PROJECT_ID}.{PROCESSED_DATASET}.combined_trade_data`
     ORDER BY country_id
     """
     countries_df = load_data(query, "available_countries")
@@ -139,7 +138,7 @@ def load_top_countries(year):
       total_exports,
       total_imports,
       eci
-    FROM `{GCP_PROJECT_ID}.{RAW_DATASET}.raw_country_year_metrics`
+    FROM `{GCP_PROJECT_ID}.{PROCESSED_DATASET}.country_year_metrics`
     WHERE year = {year}
     ORDER BY trade_volume DESC
     LIMIT 15
