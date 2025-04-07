@@ -160,7 +160,6 @@ env.bak/
 venv.bak/
 .streamlit/config.toml
 .codeiumignore
-.windsurfrules
 
 # Spyder project settings
 .spyderproject
