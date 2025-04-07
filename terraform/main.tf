@@ -6,22 +6,8 @@ provider "google" {
 }
 
 # Storage resources
-resource "google_storage_bucket" "data_lake" {
-  name     = "${var.project_id}-data-lake"
-  location = var.region
-  storage_class = "STANDARD"
-  force_destroy = true
-  versioning {
-    enabled = true
-  }
-}
-
-# Create raw data bucket folder (only keeping this one as others are redundant)
-resource "google_storage_bucket_object" "raw_data_folder" {
-  name    = "raw/"
-  bucket  = google_storage_bucket.data_lake.name
-  content = " "
-}
+# Note: The data lake bucket is now created manually via the create_public_bucket.py script
+# and is not managed by Terraform anymore
 
 # BigQuery datasets
 resource "google_bigquery_dataset" "raw_data" {
@@ -100,10 +86,4 @@ resource "google_compute_instance" "pipeline_vm" {
   metadata = {
     enable-oslogin = "TRUE"
   }
-}
-
-# Output the bucket name for use in scripts
-output "bucket_name" {
-  value       = google_storage_bucket.data_lake.name
-  description = "The name of the GCS bucket created for the data lake"
 }

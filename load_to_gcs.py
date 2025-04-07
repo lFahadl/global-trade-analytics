@@ -10,6 +10,13 @@ import time
 # Load environment variables
 load_dotenv()
 
+# Get environment variables
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+GCS_BUCKET_NAME = os.getenv("GCS_PUBLIC_BUCKET_NAME")  # Use the public bucket name
+DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
+TEST_DATA_DIR = Path(os.getenv("TEST_DATA_DIR", "test_data"))
+MAX_WORKERS = int(os.getenv("MAX_WORKERS", "4"))
+
 # Initialize GCS client
 storage_client = storage.Client.from_service_account_json(GOOGLE_APPLICATION_CREDENTIALS)
 
@@ -144,13 +151,13 @@ def load_to_gcs(use_test_data=False):
     data_directory = TEST_DATA_DIR if use_test_data else DATA_DIR
     print(f"Using data from: {data_directory}")
     
-    # Create the bucket if it doesn't exist
+    # Check if the bucket exists - we don't create it here since it's created by create_public_bucket.py
     try:
         bucket = storage_client.get_bucket(GCS_BUCKET_NAME)
-        print(f"Bucket {GCS_BUCKET_NAME} already exists")
-    except Exception:
-        bucket = storage_client.create_bucket(GCS_BUCKET_NAME)
-        print(f"Bucket {GCS_BUCKET_NAME} created")
+        print(f"Using public bucket {GCS_BUCKET_NAME}")
+    except Exception as e:
+        print(f"Error: Bucket {GCS_BUCKET_NAME} not found. Please run create_public_bucket.py first.")
+        return
     
     # Get list of CSV files
     csv_files = list(data_directory.glob("*.csv"))
@@ -194,6 +201,7 @@ def load_to_gcs(use_test_data=False):
     print(f"Skipped (already exists): {skipped_files}")
     print(f"Failed: {failed_files}")
     print(f"Total time: {elapsed_time:.2f} seconds")
+    print(f"\nPublic bucket URL: https://storage.googleapis.com/{GCS_BUCKET_NAME}")
 
 if __name__ == "__main__":
     import argparse

@@ -35,11 +35,10 @@ def load_gcs_to_bigquery_tables(context: AssetExecutionContext,
     
     # Get environment variables using Dagster's EnvVar
     project_id: str = EnvVar("GCP_PROJECT_ID").get_value()
-    bucket_name: str = EnvVar("GCS_BUCKET_NAME").get_value()
+    bucket_name: str = EnvVar("GCS_BUCKET_NAME").get_value()  # Using the standard bucket name variable
     dataset_id: str = EnvVar("BQ_DATASET").get_value()
-    data_dir: Path = Path(EnvVar("DATA_DIR").get_value())
     
-    context.log.info(f"Using file list from: {data_dir}")
+    context.log.info(f"Using public bucket: {bucket_name}")
     
     # Initialize statistics
     stats: Dict[str, int] = {"total": 0, "loaded": 0, "skipped": 0, "error": 0}
@@ -55,15 +54,28 @@ def load_gcs_to_bigquery_tables(context: AssetExecutionContext,
             context.log.error(error_msg)
             raise Exception(error_msg)
             
-        # Process each CSV file
-        for csv_file in data_dir.glob("*.csv"):
+        # Initialize GCS client to list files in the bucket
+        from google.cloud import storage
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+        
+        # List all blobs in the 'raw/' prefix
+        blobs = list(bucket.list_blobs(prefix="raw/"))
+        context.log.info(f"Found {len(blobs)} files in gs://{bucket_name}/raw/")
+        
+        # Process each file in the bucket
+        for blob in blobs:
+            # Skip if not a gzipped file or if it's just the directory marker
+            if not blob.name.endswith(".gz") or blob.name == "raw/":
+                continue
+                
             stats["total"] += 1
-            table_name: str = csv_file.stem
-            source_blob_name: str = f"raw/{table_name}.gz"
+            # Extract table name from the blob name (remove 'raw/' prefix and '.gz' suffix)
+            table_name: str = blob.name.replace("raw/", "").replace(".gz", "")
             table_ref: str = f"{project_id}.{dataset_id}.{table_name}"
             
             # URI for the GCS file
-            uri: str = f"gs://{bucket_name}/{source_blob_name}"
+            uri: str = f"gs://{bucket_name}/{blob.name}"
             context.log.info(f"Loading data from {uri} to {table_ref}...")
             
             try:
@@ -72,6 +84,8 @@ def load_gcs_to_bigquery_tables(context: AssetExecutionContext,
                     source_format=bq.SourceFormat.CSV,
                     skip_leading_rows=1,  # Skip the header row
                     autodetect=True,  # Auto-detect schema
+                    allow_quoted_newlines=True,
+                    allow_jagged_rows=True,
                 )
                 
                 # Start the load job
@@ -90,6 +104,7 @@ def load_gcs_to_bigquery_tables(context: AssetExecutionContext,
     
     context.log.info(f"Ingestion complete. Stats: {stats}")
     return stats
+
 
 @asset
 def find_source_tables(context: AssetExecutionContext, bq_resource: BigQueryResource) -> List[str]:

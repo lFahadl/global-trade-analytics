@@ -10,6 +10,15 @@ This project implements a data pipeline for loading large CSV files (>1GB) from 
 2. **Step 2**: Load data from GCS to BigQuery using direct GCP APIs
 3. **Step 3**: Transform raw data in BigQuery into analytics-ready views and materialized views
 
+## Public Data Access
+
+For convenience, we've created a public Google Cloud Storage bucket with the pre-loaded trade data files:
+
+- **Public Bucket URL**: https://storage.googleapis.com/global-trade-analytics-public-trade-data
+- **GCS Path**: `gs://global-trade-analytics-public-trade-data/raw/`
+
+This public bucket contains the compressed trade data files and can be used directly with BigQuery for loading data without having to run the initial data upload steps.
+
 ## Key Features
 
 - **Efficient Compression**: Uses gzip to compress CSV files before uploading to GCS (typically 5-10x reduction in size)
@@ -35,6 +44,7 @@ This project implements a data pipeline for loading large CSV files (>1GB) from 
 - `terraform/` - Terraform configuration for GCP infrastructure
 - `update_env.sh` - Script to update environment variables
 - `tests/` - Unit tests for the data pipeline
+- `create_public_bucket.py` - Script to create a public GCS bucket for sharing data
 
 ## Setup and Usage
 
