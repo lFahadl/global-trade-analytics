@@ -52,21 +52,89 @@ This public bucket contains the compressed trade data files and can be used dire
 
 - Python 3.7+
 - Google Cloud Platform account with appropriate permissions
-- Service account credentials (stored in `Global-Trade-Analytics.json`)
+- Service account credentials (stored in `creds.json`)
 
 ### Installation
 
 1. Clone the repository
 2. Set up a virtual environment
 3. Install dependencies: `pip install -r requirements.txt`
-4. Configure environment variables in `.env`
+4. Configure environment files:
+   - Create a root `.env` file by copying `.env.example` to `.env` and updating the values
+   - Create a separate `.env` file in the `dagster_deployment` directory with only the `GCP_CREDS` variable:
+     ```
+     GCP_CREDS=<base64-encoded-credentials>
+     ```
+   - Generate the base64-encoded credentials with:
+     ```bash
+     cat creds.json | base64
+     ```
+5. Create a `terraform.tfvars` file in the terraform directory with your GCP configuration:
+   ```
+   project_id       = "your-project-id"
+   credentials_file = "path-to-credsfile"
+   region           = "us-central1"
+   ```
 
 ### Running the Pipeline
 
-1. **Upload to GCS**: `python load_to_gcs.py` or `python load_to_gcs.py --test` for test data
-2. **Load to BigQuery**: `python load_to_bigquery.py` or `python load_to_bigquery.py --test` for test data
-3. **Create Combined Dataset**: `python create_combined_dataset.py`
-4. **Transform Data**: `python new_transform_data.py`
+#### 1. Set Up Infrastructure with Terraform
+
+1. Navigate to the terraform directory:
+   ```bash
+   cd terraform
+   ```
+
+2. Initialize Terraform:
+   ```bash
+   terraform init
+   ```
+
+3. Apply the Terraform configuration to create the required GCP resources:
+   ```bash
+   terraform apply
+   ```
+
+#### 2. Start Dagster with Docker
+
+1. Navigate to the dagster_deployment directory:
+   ```bash
+   cd dagster_deployment
+   ```
+
+2. Build and start the Docker containers:
+   ```bash
+   docker-compose up -d
+   ```
+
+3. Access the Dagster UI at http://localhost:3000
+
+#### 3. Run the Data Pipeline
+
+Use the Dagster UI or CLI to run the pipeline assets in the following order:
+
+1. **Load data to GCS**: Materializes the assets that upload data to Google Cloud Storage
+2. **Load data to BigQuery**: Transfers data from GCS to BigQuery raw tables
+3. **Transform data**: Creates the combined table and analytics views
+
+To run all assets using the CLI:
+```bash
+docker exec -it docker_example_user_code dagster asset materialize
+```
+
+#### 4. Shutting Down
+
+1. Stop the Dagster containers:
+   ```bash
+   cd dagster_deployment
+   docker-compose down
+   ```
+
+2. To destroy the GCP infrastructure (optional, for cleanup):
+   ```bash
+   cd terraform
+   terraform destroy
+   ```
 
 ## Data Organization
 
