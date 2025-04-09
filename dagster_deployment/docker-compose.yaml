@@ -32,6 +32,7 @@ services:
       DAGSTER_POSTGRES_PASSWORD: 'postgres_password'
       DAGSTER_POSTGRES_DB: 'postgres_db'
       DAGSTER_CURRENT_IMAGE: 'docker_example_user_code_image'
+      GCP_CREDS: ${GCP_CREDS}
 
     networks:
       - docker_example_network

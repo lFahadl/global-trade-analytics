@@ -51,8 +51,14 @@ This public bucket contains the compressed trade data files and can be used dire
 ### Prerequisites
 
 - Python 3.7+
+- Terraform
 - Google Cloud Platform account with appropriate permissions
 - Service account credentials (stored in `creds.json`)
+- Enabled Google Cloud APIs:
+  - Identity and Access Management (IAM) API
+  - Cloud Resource Manager API
+  - BigQuery API
+  - Cloud Storage API
 
 ### Installation
 
@@ -61,13 +67,17 @@ This public bucket contains the compressed trade data files and can be used dire
 3. Install dependencies: `pip install -r requirements.txt`
 4. Configure environment files:
    - Create a root `.env` file by copying `.env.example` to `.env` and updating the values
-   - Create a separate `.env` file in the `dagster_deployment` directory with only the `GCP_CREDS` variable:
-     ```
-     GCP_CREDS=<base64-encoded-credentials>
-     ```
-   - Generate the base64-encoded credentials with:
+   - For Dagster deployment, you'll need to set the `GCP_CREDS` environment variable before running Docker Compose:
      ```bash
-     cat creds.json | base64
+     # Generate base64-encoded credentials
+     export GCP_CREDS=$(cat /path/to/your/creds.json | base64)
+     
+     # Verify the variable is set
+     echo $GCP_CREDS | head -c 20
+     
+     # Now run docker compose with the environment variable available
+     cd dagster_deployment
+     docker compose build && docker compose up
      ```
 5. Create a `terraform.tfvars` file in the terraform directory with your GCP configuration:
    ```

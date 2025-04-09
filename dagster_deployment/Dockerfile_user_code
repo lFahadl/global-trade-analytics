@@ -9,20 +9,16 @@ RUN pip install \
     google-cloud-storage \
     python-dotenv \
     pandas \
-    numpy
+    numpy \
+    plotly
 
 # Add code location code
 WORKDIR /opt/dagster/app
 
-# Copy all necessary files
-COPY assets.py definitions.py /opt/dagster/app/
-COPY ingestion /opt/dagster/app/ingestion
-
-# Create directories for data paths
-RUN mkdir -p /opt/dagster/app/data /opt/dagster/app/test_data
-
-# Copy the .env file for environment variables
-COPY .env /opt/dagster/app/.env
+# Copy necessary files and directories
+COPY definitions.py /opt/dagster/app/
+COPY ingestion/ /opt/dagster/app/ingestion/
+COPY analytics/ /opt/dagster/app/analytics/
 
 # Run dagster code server on port 4000
 EXPOSE 4000
