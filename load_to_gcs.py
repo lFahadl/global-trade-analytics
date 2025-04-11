@@ -11,7 +11,7 @@ import time
 load_dotenv()
 
 # Get environment variables
-GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_1")
 GCS_BUCKET_NAME = os.getenv("GCS_PUBLIC_BUCKET_NAME")  # Use the public bucket name
 DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 TEST_DATA_DIR = Path(os.getenv("TEST_DATA_DIR", "test_data"))

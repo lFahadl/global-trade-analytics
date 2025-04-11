@@ -53,7 +53,7 @@ This public bucket contains the compressed trade data files and can be used dire
 - Python 3.7+
 - Terraform
 - Google Cloud Platform account with appropriate permissions
-- Service account credentials (stored in `creds.json`)
+- Service account credentials (stored in `dagster_deployment/creds.json`)
 - Enabled Google Cloud APIs:
   - Identity and Access Management (IAM) API
   - Cloud Resource Manager API
@@ -67,17 +67,14 @@ This public bucket contains the compressed trade data files and can be used dire
 3. Install dependencies: `pip install -r requirements.txt`
 4. Configure environment files:
    - Create a root `.env` file by copying `.env.example` to `.env` and updating the values
-   - For Dagster deployment, you'll need to set the `GCP_CREDS` environment variable before running Docker Compose:
+   - Place your service account credentials (`creds.json`) in the dagster_deployment folder as well
+   - Set the environment variables for file paths:
      ```bash
-     # Generate base64-encoded credentials
-     export GCP_CREDS=$(cat /path/to/your/creds.json | base64)
+     # Path to your .env file
+     export ENV_FILE_PATH=/path/to/your/.env
      
-     # Verify the variable is set
-     echo $GCP_CREDS | head -c 20
-     
-     # Now run docker compose with the environment variable available
-     cd dagster_deployment
-     docker compose build && docker compose up
+     # Path to your credentials file
+     export CREDS_FILE_PATH=/path/to/your/creds.json
      ```
 5. Create a `terraform.tfvars` file in the terraform directory with your GCP configuration:
    ```
@@ -121,11 +118,12 @@ This public bucket contains the compressed trade data files and can be used dire
 
 #### 3. Run the Data Pipeline
 
+Note: You can skip running `load_to_gcs.py` as the data is already uploaded to a cloud bucket to save upload time. If you want to run it yourself, you can download the data from [Harvard Dataverse](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/YAVJDF).
+
 Use the Dagster UI or CLI to run the pipeline assets in the following order:
 
-1. **Load data to GCS**: Materializes the assets that upload data to Google Cloud Storage
-2. **Load data to BigQuery**: Transfers data from GCS to BigQuery raw tables
-3. **Transform data**: Creates the combined table and analytics views
+1. **Load data to BigQuery**: Transfers data from GCS to BigQuery raw tables
+2. **Transform data**: Creates the combined table and analytics views
 
 To run all assets using the CLI:
 ```bash

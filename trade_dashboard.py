@@ -20,14 +20,13 @@ import plotly.graph_objects as go
 from google.cloud import bigquery
 from google.oauth2 import service_account
 from dotenv import load_dotenv
-from pathlib import Path
 
 # Load environment variables
 load_dotenv(override=True)
 
 # Get environment variables
 GCP_PROJECT_ID = os.environ.get('GCP_PROJECT_ID')
-GOOGLE_APPLICATION_CREDENTIALS = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+GOOGLE_APPLICATION_CREDENTIALS = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_1')
 RAW_DATASET = os.environ.get('RAW_DATASET')
 PROCESSED_DATASET = os.environ.get('PROCESSED_DATASET')
 ANALYTICS_DATASET = os.environ.get('ANALYTICS_DATASET')
