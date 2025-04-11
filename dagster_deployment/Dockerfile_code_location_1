@@ -7,18 +7,11 @@ RUN pip install \
     dagster-gcp \
     google-cloud-bigquery \
     google-cloud-storage \
-    python-dotenv \
-    pandas \
-    numpy \
-    plotly
+    python-dotenv
 
 # Add code location code
 WORKDIR /opt/dagster/app
-
-# Copy necessary files and directories
-COPY definitions.py /opt/dagster/app/
-COPY ingestion/ /opt/dagster/app/ingestion/
-COPY analytics/ /opt/dagster/app/analytics/
+COPY . /opt/dagster/app
 
 # Run dagster code server on port 4000
 EXPOSE 4000

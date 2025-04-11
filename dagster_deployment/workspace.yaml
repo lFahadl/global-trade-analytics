@@ -1,5 +1,5 @@
-load_from:  # Load from the user code container
+load_from:
   - grpc_server:
       host: docker_example_user_code
       port: 4000
-      location_name: "trade_analytics"
+      location_name: "user_code"
