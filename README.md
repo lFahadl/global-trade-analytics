@@ -67,7 +67,7 @@ This public bucket contains the compressed trade data files and can be used dire
 3. Install dependencies: `pip install -r requirements.txt`
 4. Configure environment files:
    - Create a root `.env` file by copying `.env.example` to `.env` and updating the values
-   - Place your service account credentials (`creds.json`) in the dagster_deployment folder as well
+   - Place your service account credentials (`creds.json`) in the root directory.
    - Set the environment variables for file paths:
      ```bash
      # Path to your .env file
@@ -120,14 +120,22 @@ This public bucket contains the compressed trade data files and can be used dire
 
 Note: You can skip running `load_to_gcs.py` as the data is already uploaded to a cloud bucket to save upload time. If you want to run it yourself, you can download the data from [Harvard Dataverse](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/YAVJDF).
 
-Use the Dagster UI or CLI to run the pipeline assets in the following order:
+Use the Dagster UI or CLI to run the following jobs in order:
 
-1. **Load data to BigQuery**: Transfers data from GCS to BigQuery raw tables
-2. **Transform data**: Creates the combined table and analytics views
+1. **data_ingestion_job**: Loads data from Google Cloud Storage to BigQuery tables
+2. **combined_table_job**: Creates and optimizes the combined trade data table
+3. **analytics_job**: Creates analytics views for dashboards
 
-To run all assets using the CLI:
+To run each job using the CLI:
 ```bash
-docker exec -it docker_example_user_code dagster asset materialize
+# Run the data ingestion job
+docker exec -it docker_example_user_code dagster job execute -j data_ingestion_job
+
+# Run the combined table job
+docker exec -it docker_example_user_code dagster job execute -j combined_table_job
+
+# Run the analytics job
+docker exec -it docker_example_user_code dagster job execute -j analytics_job
 ```
 
 #### 4. Shutting Down
