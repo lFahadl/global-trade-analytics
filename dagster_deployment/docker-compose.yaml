@@ -27,8 +27,6 @@ services:
     restart: always
     env_file:
       - ${ENV_FILE_PATH:-.env}
-    volumes:
-      - ${CREDS_FILE_PATH:-./creds.json}:/opt/dagster/app/creds.json:ro
     networks:
       - dagster_network
 
