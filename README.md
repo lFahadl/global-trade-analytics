@@ -1,6 +1,19 @@
 # Global Trade Analytics
 
-A data pipeline for processing large trade data CSV files to Google Cloud Storage and BigQuery with analytics transformations.
+## Problem Description
+
+This project addresses the challenge of analyzing global trade patterns using the Harmonized System (HS) 2012 dataset from Harvard Dataverse. The dataset contains detailed international trade flows that provide valuable insights into global economic relationships.
+
+The dataset itself contains trade flows classified via the Harmonized System (HS) 2012, which offers a contemporary and detailed classification of approximately 5,200 goods. While the HS data provides granular categorization at 1-, 2-, 4-, and 6-digit detail levels, it only covers data from 2012 onward, and reporting reliability can vary at the most detailed (6-digit) level.
+
+Our solution implements a complete data pipeline that:
+1. Compresses and transfers the raw data to Google Cloud Storage
+2. Loads the data into BigQuery with appropriate schema definitions
+3. Transforms the raw data into analytics-ready views through a multi-step orchestrated process
+4. Optimizes query performance through strategic partitioning, clustering, and materialized views
+5. Provides a foundation for visualization and analysis of global trade patterns
+
+The end result is a robust analytics platform that enables exploration of international trade relationships, economic complexity indicators, and year-over-year trend analysis.
 
 ## Project Overview
 
@@ -9,6 +22,21 @@ This project implements a data pipeline for loading large CSV files (>1GB) from 
 1. **Step 1**: Load CSV files from local storage to Google Cloud Storage (using gzip compression)
 2. **Step 2**: Load data from GCS to BigQuery using direct GCP APIs
 3. **Step 3**: Transform raw data in BigQuery into analytics-ready views and materialized views
+
+## Pipeline Characteristics
+
+### Pipeline Type and Architecture
+- **Batch Processing**: The pipeline operates in batch mode, processing complete datasets during each run
+- **Data Warehouse**: Uses BigQuery as the primary data warehouse for storage and analytics
+- **Execution Frequency**: Monthly updates to incorporate new trade data
+- **Trigger Mechanism**: Event-based triggers initiate the pipeline execution
+- **Data Volume**: Processes 4GB+ of trade data in each pipeline run
+
+### Data Processing Strategy
+- **Idempotency Guarantees**: Implements a write-truncate pattern to ensure idempotent operations
+- **Partitioning Strategy**: The combined table is partitioned by year (RANGE_BUCKET) for efficient time-based queries
+- **Clustering Strategy**: Data is clustered by country_id and product_id to optimize common query patterns
+- **Table Creation Pattern**: For existing tables, uses MERGE operations to add new data without duplicates
 
 ## Public Data Access
 
@@ -30,6 +58,19 @@ This public bucket contains the compressed trade data files and can be used dire
 - **Environment Management**: Automatically updates environment variables with latest bucket names
 - **Idempotent Operations**: All pipeline steps check for existing data to prevent duplicates
 - **Optimized Combined Table**: Uses partitioning by year and clustering by country_id and product_id
+
+## Technologies
+
+- **Python**: Core programming language for all data processing scripts
+- **Google Cloud Platform (GCP)**: Primary cloud infrastructure provider
+- **BigQuery**: Data warehouse for storage and analytics processing
+- **Google Cloud Storage (GCS)**: Object storage for the data lake
+- **Terraform**: Infrastructure as Code (IaC) for managing cloud resources
+- **Dagster**: Data orchestration and pipeline management
+- **Docker**: Containerization for consistent deployment environments
+- **pandas**: Data manipulation and analysis library
+- **pyarrow**: High-performance data processing and conversion
+- **Streamlit**: Dashboard creation and data visualization
 
 ## File Structure
 
@@ -154,93 +195,55 @@ docker exec -it docker_example_user_code dagster job execute -j analytics_job
 
 ## Data Organization
 
-The project uses a four-tier dataset organization in BigQuery:
+The project uses a three-tier dataset organization in BigQuery:
 
 1. **Raw Data** (`raw_trade_data`): Original, unmodified data loaded from source files
-2. **Combined Data** (`combined_trade_data`): Optimized table combining all source tables
-3. **Processed Data** (`processed_trade_data`): Intermediate, cleaned data with materialized views
-4. **Analytics** (`trade_analytics`): Final analytics-ready views with metrics and KPIs
+2. **Processed Data** (`processed_trade_data`): Intermediate, cleaned data with materialized views and combined tables
+3. **Analytics** (`trade_analytics`): Final analytics-ready views with metrics and KPIs
 
-## Performance Optimizations
+## Dashboard
 
-- **Idempotent Operations**: All scripts check for existing data before processing
-- **Partitioning by Year**: The combined table is partitioned by year for efficient time-based queries
-- **Clustering by Country and Product**: The combined table is clustered by country_id and product_id
-- **MERGE Operations**: Uses BigQuery MERGE for idempotent data updates
-- **Gzip Compression**: CSV files are compressed before uploading, reducing file sizes by ~7x
-- **Parallel Processing**: Multiple files are processed concurrently
+The project includes a Streamlit-based dashboard (`trade_dashboard.py`) for visualizing global trade analytics data. The dashboard provides interactive visualizations and insights derived from the processed data in BigQuery.
 
-## Infrastructure Management
+### Data Sources
 
-The project uses Terraform to manage Google Cloud infrastructure:
+The dashboard uses the following tables and views:
 
-- **BigQuery Datasets**: Three datasets are created for the data pipeline
-- **Google Cloud Storage**: A data lake bucket with a raw folder for storing compressed CSV files
-- **Service Account**: A dedicated service account for the data pipeline with appropriate permissions
+- **Combined Table**: `{PROCESSED_DATASET}.combined_trade_data`
+  - Used for retrieving available years and countries
+  - Primary source for all aggregate metrics
 
-### Development vs. Production
+- **Country Year Metrics**: `{PROCESSED_DATASET}.country_year_metrics`
+  - Contains country-level trade metrics by year
+  - Used for top countries visualization
 
-For development and testing environments, the Terraform configuration includes `delete_contents_on_destroy = true` for BigQuery datasets. This ensures that all tables and views are deleted when running `terraform destroy`, making it easier to clean up resources during testing.
+- **Global Yearly Metrics View**: `{ANALYTICS_DATASET}.v_global_yearly_metrics`
+  - Provides aggregated global trade metrics by year
+  - Used for global trade volume and ECI trend visualizations
 
-**Note**: For production environments, you may want to remove this setting to prevent accidental data loss.
+### Visualizations
 
-## Data Transformations
+The dashboard currently includes the following visualizations:
 
-The project includes several BigQuery transformations to prepare the data for analytics:
+1. **Global Trade Volume Trend**
+   - Line chart showing global trade volume over time
+   - Data source: `v_global_yearly_metrics`
 
-1. **Materialized Views**: Pre-aggregated data for efficient querying
-   - `mv_country_annual_trade`: Country-level trade metrics by year
-   - `mv_country_pairs_annual_trade`: Bilateral trade relationships
-   - `mv_product_annual_trade`: Product-level trade data
+2. **Economic Complexity Index Trend**
+   - Line chart showing average ECI over time
+   - Data source: `v_global_yearly_metrics`
 
-2. **Analytics Views**: Ready-to-use views for specific metrics
-   - `v_global_trade_metrics`: Global trade volume and economic complexity with YoY changes
-   - `v_top_traded_products`: Top traded products with YoY changes
-   - `v_top_trading_partners`: Top trading partners for each country
+3. **Top Countries by Trade Volume**
+   - Bar chart showing top 15 countries by trade volume
+   - Color-coded by Economic Complexity Index (ECI)
+   - Data source: `country_year_metrics`
 
-3. **Fallback Mechanism for Single-Year Data**:
-   - The transformation layer includes a fallback mechanism for countries with only one year of data
-   - For countries with multiple years, actual year-over-year changes in ECI and trade balance are calculated
-   - For countries with only one year, default values are assigned (0 for changes, "No change data" for trend category)
-   - This ensures all countries appear in visualizations, even those without historical data
-   - The dashboard UI clearly indicates countries with single-year data
+### Running the Dashboard
 
-## Performance Considerations
-
-The data pipeline uses several techniques to optimize performance:
-
-1. **Gzip Compression**: CSV files are compressed before uploading, reducing file sizes by ~7x
-2. **Parallel Processing**: Multiple files are processed concurrently
-3. **Direct GCP APIs**: Uses direct Google Cloud APIs for optimal performance
-4. **Materialized Views**: Pre-aggregated data reduces query costs and improves performance
-
-For very large files or high-performance requirements, consider using `gsutil` for even faster uploads.
-
-## Testing
-
-The project includes a `test_data/` directory containing a smaller subset of the data for testing purposes. The full dataset includes multiple files larger than 1GB each, which can be time-consuming to upload to GCS. For quicker testing and demonstration, use the test data option:
+To run the dashboard locally:
 
 ```bash
-python load_to_gcs.py --test
-python load_to_bigquery.py --test
+streamlit run trade_dashboard.py
 ```
 
-This will process only the files in the `test_data/` directory, which includes the smallest complete CSV file from the dataset (approximately 350MB). This provides a realistic test while being much faster than processing the full multi-gigabyte files.
-
-Unit tests are available in the `tests/` directory and can be run with:
-
-```bash
-python run_tests.py
-```
-
-## Changes
-
-- **Dashboard Performance Optimization**: Implemented a two-step approach using regular tables and materialized views to reduce query data scan from 2.22 GB to a few KB
-- **Dashboard Simplification**: Temporarily commented out additional dashboard pages that require improved data models for optimal performance (to be implemented in future iterations)
-- **Dashboard Caching**: Implemented Streamlit's caching (`@st.cache_data`) for data loading functions on the Overview page to improve performance and reduce redundant BigQuery queries.
-- **Data Accuracy Fix (Global Metrics)**: Corrected logic in `v_global_yearly_metrics` view; removed incorrect division by 2 as summing country-level totals directly provides global aggregates.
-- **BigQuery Materialized View Workaround**: Created regular tables for complex aggregations (with COUNT DISTINCT) to overcome BigQuery materialized view limitations
-- **Optimized Data Storage**: Created a combined table with range partitioning by year and clustering by country_id and product_id
-- **Location Consistency**: Ensured all datasets use the same location (us-central1) to prevent cross-location query errors
-- **Idempotent Operations**: Implemented MERGE operations and DISTINCT selects to ensure data pipeline idempotency
-- **Temporary Dataset Solution**: Added temporary dataset approach to handle location constraints
+The dashboard will be available at http://localhost:8501 by default.

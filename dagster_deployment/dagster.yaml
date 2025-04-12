@@ -10,10 +10,17 @@ run_launcher:
       - DAGSTER_POSTGRES_USER
       - DAGSTER_POSTGRES_PASSWORD
       - DAGSTER_POSTGRES_DB
+      - GCP_PROJECT_ID
+      - GOOGLE_APPLICATION_CREDENTIALS
+      - RAW_DATASET
+      - PROCESSED_DATASET
+      - ANALYTICS_DATASET
+      - GCS_BUCKET_NAME
     network: dagster_network
     container_kwargs:
       volumes:
         - /tmp/io_manager_storage:/tmp/io_manager_storage
+        - /Users/fahadshoaib/Documents/global-trade-analytics/creds.json:/opt/dagster/app/creds.json
 
 storage:
   postgres:

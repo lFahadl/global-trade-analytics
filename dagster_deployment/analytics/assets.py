@@ -20,7 +20,6 @@ def calculate_product_year_metrics(context: AssetExecutionContext, bq_resource: 
     """
     project_id: str = bq_resource.project
     processed_dataset: str = EnvVar("PROCESSED_DATASET").get_value()
-    combined_table_name: str = "combined_trade_data"
     metrics_table_name: str = "product_year_metrics"
     
     combined_table_ref: str = f"{project_id}.{processed_dataset}.{combined_table_name}"
