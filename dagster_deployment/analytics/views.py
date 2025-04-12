@@ -6,8 +6,8 @@ from google.cloud import bigquery as bq
 
 # Import dependencies
 from analytics.assets import country_year_metrics, calculate_complexity_dynamics
-from analytics.assets_part2 import calculate_export_portfolio, calculate_partner_diversification
-from analytics.assets_part2 import calculate_product_complexity, calculate_coi_growth_analysis
+from analytics.assets2 import calculate_export_portfolio, calculate_partner_diversification
+from analytics.assets2 import calculate_product_complexity, calculate_coi_growth_analysis
 
 
 @asset(

@@ -5,7 +5,10 @@ from ingestion.assets import load_gcs_to_bigquery_tables, find_source_tables
 from ingestion.assets import combined_trade_data, country_year_metrics, optimize_combined_table
 
 # Import specific assets from analytics module
-from analytics.views import v_global_yearly_metrics_view
+from analytics.views import v_global_yearly_metrics_view, create_eci_balance_trends_view, create_export_portfolio_view
+from analytics.views import create_diversification_complexity_view, create_coi_predictive_power_view, create_portfolio_evolution_view
+from analytics.assets import calculate_product_year_metrics, calculate_bilateral_flows, calculate_export_specialization, calculate_complexity_dynamics
+from analytics.assets2 import calculate_product_complexity, calculate_export_portfolio, calculate_partner_diversification, calculate_coi_growth_analysis
 
 # Import resources
 from ingestion.resources import bigquery_resource
@@ -19,8 +22,25 @@ all_assets = [
     country_year_metrics,
     optimize_combined_table,
     
-    # Analytics assets
-    v_global_yearly_metrics_view
+    # Analytics assets from views.py
+    v_global_yearly_metrics_view,
+    create_eci_balance_trends_view,
+    create_export_portfolio_view,
+    create_diversification_complexity_view,
+    create_coi_predictive_power_view,
+    create_portfolio_evolution_view,
+    
+    # Analytics assets from assets.py
+    calculate_product_year_metrics,
+    calculate_bilateral_flows,
+    calculate_export_specialization,
+    calculate_complexity_dynamics,
+    
+    # Analytics assets from assets2.py
+    calculate_product_complexity,
+    calculate_export_portfolio,
+    calculate_partner_diversification,
+    calculate_coi_growth_analysis
 ]
 
 # Define jobs

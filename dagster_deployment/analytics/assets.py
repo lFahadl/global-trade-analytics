@@ -18,9 +18,10 @@ def calculate_product_year_metrics(context: AssetExecutionContext, bq_resource: 
     Calculates various metrics aggregated by product and year from the combined trade data.
     Stores the results in a new table `product_year_metrics` in the processed dataset.
     """
-    project_id: str = bq_resource.project
+    project_id: str = EnvVar("GCP_PROJECT_ID").get_value()
     processed_dataset: str = EnvVar("PROCESSED_DATASET").get_value()
     metrics_table_name: str = "product_year_metrics"
+    combined_table_name: str = "combined_trade_data"
     
     combined_table_ref: str = f"{project_id}.{processed_dataset}.{combined_table_name}"
     metrics_table_ref: str = f"{project_id}.{processed_dataset}.{metrics_table_name}"
@@ -65,7 +66,7 @@ def calculate_bilateral_flows(context: AssetExecutionContext, bq_resource: BigQu
     Extracts bilateral trade flows from the combined trade data.
     Stores the results in a new table `bilateral_flows` in the processed dataset.
     """
-    project_id: str = bq_resource.project
+    project_id: str = EnvVar("GCP_PROJECT_ID").get_value()
     processed_dataset: str = EnvVar("PROCESSED_DATASET").get_value()
     combined_table_name: str = "combined_trade_data"
     flows_table_name: str = "bilateral_flows"
@@ -115,7 +116,7 @@ def calculate_export_specialization(context: AssetExecutionContext, bq_resource:
     Calculates export specialization metrics from the combined trade data.
     Stores the results in a new table `export_specialization` in the processed dataset.
     """
-    project_id: str = bq_resource.project
+    project_id: str = EnvVar("GCP_PROJECT_ID").get_value()
     processed_dataset: str = EnvVar("PROCESSED_DATASET").get_value()
     combined_table_name: str = "combined_trade_data"
     specialization_table_name: str = "export_specialization"
@@ -165,7 +166,7 @@ def calculate_complexity_dynamics(context: AssetExecutionContext, bq_resource: B
     Calculates economic complexity dynamics from country-year metrics.
     Stores the results in a new table `complexity_dynamics` in the processed dataset.
     """
-    project_id: str = bq_resource.project
+    project_id: str = EnvVar("GCP_PROJECT_ID").get_value()
     processed_dataset: str = EnvVar("PROCESSED_DATASET").get_value()
     metrics_table_name: str = "country_year_metrics"
     dynamics_table_name: str = "complexity_dynamics"

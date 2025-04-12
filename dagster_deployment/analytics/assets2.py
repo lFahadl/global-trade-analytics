@@ -18,7 +18,7 @@ def calculate_product_complexity(context: AssetExecutionContext, bq_resource: Bi
     Calculates product complexity segmentation from product-year metrics.
     Stores the results in a new table `product_complexity` in the processed dataset.
     """
-    project_id: str = bq_resource.project
+    project_id: str = EnvVar("GCP_PROJECT_ID").get_value()
     processed_dataset: str = EnvVar("PROCESSED_DATASET").get_value()
     metrics_table_name: str = "product_year_metrics"
     complexity_table_name: str = "product_complexity"
@@ -82,7 +82,7 @@ def calculate_export_portfolio(context: AssetExecutionContext, bq_resource: BigQ
     Calculates country export portfolio analysis from export specialization and product complexity.
     Stores the results in a new table `export_portfolio` in the processed dataset.
     """
-    project_id: str = bq_resource.project
+    project_id: str = EnvVar("GCP_PROJECT_ID").get_value()
     processed_dataset: str = EnvVar("PROCESSED_DATASET").get_value()
     specialization_table_name: str = "export_specialization"
     complexity_table_name: str = "product_complexity"
@@ -149,7 +149,7 @@ def calculate_partner_diversification(context: AssetExecutionContext, bq_resourc
     Calculates trade partner diversification from bilateral flows.
     Stores the results in a new table `partner_diversification` in the processed dataset.
     """
-    project_id: str = bq_resource.project
+    project_id: str = EnvVar("GCP_PROJECT_ID").get_value()
     processed_dataset: str = EnvVar("PROCESSED_DATASET").get_value()
     flows_table_name: str = "bilateral_flows"
     diversification_table_name: str = "partner_diversification"
@@ -206,52 +206,75 @@ def calculate_partner_diversification(context: AssetExecutionContext, bq_resourc
 
 @asset(
     description="Calculates complexity outlook and export growth analysis",
-    deps=[calculate_complexity_dynamics, calculate_export_specialization, calculate_product_complexity]
+    deps=[calculate_complexity_dynamics, calculate_export_specialization]
 )
 def calculate_coi_growth_analysis(context: AssetExecutionContext, bq_resource: BigQueryResource) -> str:
     """
     Calculates complexity outlook and export growth analysis.
     Stores the results in a new table `coi_growth_analysis` in the processed dataset.
     """
-    project_id: str = bq_resource.project
+    project_id: str = EnvVar("GCP_PROJECT_ID").get_value()
     processed_dataset: str = EnvVar("PROCESSED_DATASET").get_value()
     metrics_table_name: str = "country_year_metrics"
     specialization_table_name: str = "export_specialization"
-    complexity_table_name: str = "product_complexity"
     growth_table_name: str = "coi_growth_analysis"
     
     metrics_table_ref: str = f"{project_id}.{processed_dataset}.{metrics_table_name}"
     specialization_table_ref: str = f"{project_id}.{processed_dataset}.{specialization_table_name}"
-    complexity_table_ref: str = f"{project_id}.{processed_dataset}.{complexity_table_name}"
     growth_table_ref: str = f"{project_id}.{processed_dataset}.{growth_table_name}"
 
-    context.log.info(f"Calculating COI growth analysis into {growth_table_ref}...")
+    context.log.info(f"Calculating COI growth analysis from {metrics_table_ref} and {specialization_table_ref} into {growth_table_ref}...")
 
     query: str = f"""
-    WITH country_complex_exports AS (
+    WITH base_years AS (
+      SELECT DISTINCT year as base_year
+      FROM `{processed_dataset}.{metrics_table_name}`
+      WHERE year < 2022  -- Exclude the most recent year as a base year
+    ),
+    target_years AS (
+      SELECT 
+        base_year,
+        MIN(year) as target_year
+      FROM `{processed_dataset}.{metrics_table_name}` m
+      CROSS JOIN base_years b
+      WHERE m.year > b.base_year
+      GROUP BY base_year
+    ),
+    high_complexity_products AS (
       SELECT
-        r.country_id,
-        r.year,
-        r.coi,
-        SUM(CASE WHEN p.complexity_tier = 'High Complexity' THEN e.export_value ELSE 0 END) as high_complexity_exports,
-        SUM(CASE WHEN p.complexity_tier = 'Medium-High Complexity' THEN e.export_value ELSE 0 END) as medium_high_exports
-      FROM `{processed_dataset}.{metrics_table_name}` r
-      JOIN `{processed_dataset}.{specialization_table_name}` e ON r.country_id = e.country_id AND r.year = e.year
-      JOIN `{processed_dataset}.{complexity_table_name}` p ON e.product_id = p.product_id AND e.year = p.year
-      GROUP BY r.country_id, r.year, r.coi
+        s.country_id,
+        s.year,
+        s.product_id,
+        s.export_value,
+        p.avg_pci,
+        NTILE(4) OVER (PARTITION BY s.year ORDER BY p.avg_pci) as complexity_quartile
+      FROM `{processed_dataset}.{specialization_table_name}` s
+      JOIN `{processed_dataset}.product_year_metrics` p
+        ON s.product_id = p.product_id AND s.year = p.year
     ),
     growth_metrics AS (
       SELECT
-        c1.country_id,
-        c1.year as base_year,
-        c1.coi,
-        c2.year as target_year,
-        (c2.high_complexity_exports - c1.high_complexity_exports) / NULLIF(c1.high_complexity_exports, 0) as high_complexity_growth,
-        (c2.medium_high_exports - c1.medium_high_exports) / NULLIF(c1.medium_high_exports, 0) as medium_high_growth
-      FROM country_complex_exports c1
-      JOIN country_complex_exports c2 
-        ON c1.country_id = c2.country_id 
-        AND c2.year = c1.year + 3 -- 3-year growth window
+        c.country_id,
+        t.base_year,
+        c.coi,
+        SUM(CASE 
+          WHEN h.complexity_quartile = 4 AND t.base_year = h.year
+          THEN (h2.export_value - h.export_value) / NULLIF(h.export_value, 0)
+          ELSE NULL
+        END) as high_complexity_growth,
+        SUM(CASE 
+          WHEN h.complexity_quartile = 3 AND t.base_year = h.year
+          THEN (h2.export_value - h.export_value) / NULLIF(h.export_value, 0)
+          ELSE NULL
+        END) as medium_high_growth,
+        t.target_year
+      FROM `{processed_dataset}.{metrics_table_name}` c
+      JOIN target_years t ON c.year = t.base_year
+      LEFT JOIN high_complexity_products h 
+        ON c.country_id = h.country_id AND c.year = h.year
+      LEFT JOIN high_complexity_products h2
+        ON h.country_id = h2.country_id AND h.product_id = h2.product_id AND h2.year = t.target_year
+      GROUP BY c.country_id, t.base_year, c.coi, t.target_year
     )
     SELECT
       country_id,
