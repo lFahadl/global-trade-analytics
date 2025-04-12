@@ -54,36 +54,3 @@ resource "google_project_iam_binding" "bigquery_admin" {
     "serviceAccount:${google_service_account.pipeline_service_account.email}",
   ]
 }
-
-resource "google_compute_instance" "pipeline_vm" {
-  name         = "pipeline-runner"
-  machine_type = "e2-micro"  # 2 shared vCPUs, 1 GB memory
-  zone         = "${var.region}-a"
-
-  boot_disk {
-    initialize_params {
-      image = "debian-cloud/debian-11"  # Using Debian as base OS
-      size  = 20  # Reduced size since we don't need container storage
-    }
-  }
-
-  network_interface {
-    network = "default"
-    access_config {
-      // Ephemeral IP
-    }
-  }
-
-  service_account {
-    email  = google_service_account.pipeline_service_account.email
-    scopes = ["cloud-platform"]
-  }
-
-  # Basic metadata tags
-  tags = ["pipeline"]
-
-  # Allow HTTP access
-  metadata = {
-    enable-oslogin = "TRUE"
-  }
-}
