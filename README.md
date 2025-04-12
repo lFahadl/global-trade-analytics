@@ -47,17 +47,6 @@ For convenience, we've created a public Google Cloud Storage bucket with the pre
 
 This public bucket contains the compressed trade data files and can be used directly with BigQuery for loading data without having to run the initial data upload steps.
 
-## Key Features
-
-- **Efficient Compression**: Uses gzip to compress CSV files before uploading to GCS (typically 5-10x reduction in size)
-- **Parallel Processing**: Compresses and uploads multiple files simultaneously for improved performance
-- **Data Lake Storage**: Maintains compressed files in GCS for future processing
-- **Analytics-Ready Data**: Transforms raw data into optimized structures for efficient querying
-- **Year-over-Year Analysis**: Built-in calculations for tracking changes in key metrics over time
-- **Infrastructure as Code**: Uses Terraform for GCP infrastructure management
-- **Environment Management**: Automatically updates environment variables with latest bucket names
-- **Idempotent Operations**: All pipeline steps check for existing data to prevent duplicates
-- **Optimized Combined Table**: Uses partitioning by year and clustering by country_id and product_id
 
 ## Technologies
 
@@ -72,20 +61,6 @@ This public bucket contains the compressed trade data files and can be used dire
 - **pyarrow**: High-performance data processing and conversion
 - **Streamlit**: Dashboard creation and data visualization
 
-## File Structure
-
-- `data/` - Directory containing large CSV trade data files
-- `test_data/` - Directory containing smaller CSV files for testing purposes
-- `load_to_gcs.py` - Script to compress and upload CSV files to Google Cloud Storage
-- `load_to_bigquery.py` - Script to load data from GCS to BigQuery
-- `new_transform_data.py` - Script to create combined table and analytics views
-- `create_combined_dataset.py` - Script to create the combined_trade_data dataset
-- `bigquery_transformations.sql` - SQL transformations for analytics
-- `sample_queries.sql` - Example queries for accessing the transformed data
-- `terraform/` - Terraform configuration for GCP infrastructure
-- `update_env.sh` - Script to update environment variables
-- `tests/` - Unit tests for the data pipeline
-- `create_public_bucket.py` - Script to create a public GCS bucket for sharing data
 
 ## Setup and Usage
 
