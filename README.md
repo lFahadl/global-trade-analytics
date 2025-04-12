@@ -94,7 +94,7 @@ This public bucket contains the compressed trade data files and can be used dire
 - Python 3.7+
 - Terraform
 - Google Cloud Platform account with appropriate permissions
-- Service account credentials (stored in `dagster_deployment/creds.json`)
+- Service account credentials (`creds.json`)
 - Enabled Google Cloud APIs:
   - Identity and Access Management (IAM) API
   - Cloud Resource Manager API
@@ -108,14 +108,18 @@ This public bucket contains the compressed trade data files and can be used dire
 3. Install dependencies: `pip install -r requirements.txt`
 4. Configure environment files:
    - Create a root `.env` file by copying `.env.example` to `.env` and updating the values
-   - Place your service account credentials (`creds.json`) in the root directory.
+   - Place your service account credentials in the root directory and encode them in base64:
+     ```bash
+     # Convert your credentials file to base64 format
+     cat creds.json | base64 > creds_base64.txt
+     
+     # Set the environment variable for GCP credentials
+     export GCP_CREDS=$(cat creds_base64.txt)
+     ```
    - Set the environment variables for file paths:
      ```bash
      # Path to your .env file
      export ENV_FILE_PATH=/path/to/your/.env
-     
-     # Path to your credentials file
-     export CREDS_FILE_PATH=/path/to/your/creds.json
      ```
 5. Create a `terraform.tfvars` file in the terraform directory with your GCP configuration:
    ```
@@ -165,7 +169,15 @@ Use the Dagster UI or CLI to run the following jobs in order:
 
 1. **data_ingestion_job**: Loads data from Google Cloud Storage to BigQuery tables
 2. **combined_table_job**: Creates and optimizes the combined trade data table
-3. **analytics_job**: Creates analytics views for dashboards
+3. **basic_analytics_job**: Creates basic analytics views for dashboards
+
+Additional specialized analytics jobs are available for more detailed analysis:
+
+4. **product_metrics_job**: Calculates product-related metrics and views
+5. **trade_relationship_job**: Analyzes trade relationships between countries
+6. **economic_complexity_job**: Analyzes economic complexity indicators
+7. **advanced_analytics_job**: Performs advanced analytics on trade data
+8. **full_analytics_job**: Creates all analytics assets for comprehensive analysis
 
 To run each job using the CLI:
 ```bash
@@ -175,8 +187,23 @@ docker exec -it docker_example_user_code dagster job execute -j data_ingestion_j
 # Run the combined table job
 docker exec -it docker_example_user_code dagster job execute -j combined_table_job
 
-# Run the analytics job
-docker exec -it docker_example_user_code dagster job execute -j analytics_job
+# Run the basic analytics job
+docker exec -it docker_example_user_code dagster job execute -j basic_analytics_job
+
+# Run the product metrics job
+docker exec -it docker_example_user_code dagster job execute -j product_metrics_job
+
+# Run the trade relationship job
+docker exec -it docker_example_user_code dagster job execute -j trade_relationship_job
+
+# Run the economic complexity job
+docker exec -it docker_example_user_code dagster job execute -j economic_complexity_job
+
+# Run the advanced analytics job
+docker exec -it docker_example_user_code dagster job execute -j advanced_analytics_job
+
+# Run the full analytics job
+docker exec -it docker_example_user_code dagster job execute -j full_analytics_job
 ```
 
 #### 4. Shutting Down
@@ -205,45 +232,27 @@ The project uses a three-tier dataset organization in BigQuery:
 
 The project includes a Streamlit-based dashboard (`trade_dashboard.py`) for visualizing global trade analytics data. The dashboard provides interactive visualizations and insights derived from the processed data in BigQuery.
 
-### Data Sources
-
-The dashboard uses the following tables and views:
-
-- **Combined Table**: `{PROCESSED_DATASET}.combined_trade_data`
-  - Used for retrieving available years and countries
-  - Primary source for all aggregate metrics
-
-- **Country Year Metrics**: `{PROCESSED_DATASET}.country_year_metrics`
-  - Contains country-level trade metrics by year
-  - Used for top countries visualization
-
-- **Global Yearly Metrics View**: `{ANALYTICS_DATASET}.v_global_yearly_metrics`
-  - Provides aggregated global trade metrics by year
-  - Used for global trade volume and ECI trend visualizations
-
-### Visualizations
-
-The dashboard currently includes the following visualizations:
-
-1. **Global Trade Volume Trend**
-   - Line chart showing global trade volume over time
-   - Data source: `v_global_yearly_metrics`
-
-2. **Economic Complexity Index Trend**
-   - Line chart showing average ECI over time
-   - Data source: `v_global_yearly_metrics`
-
-3. **Top Countries by Trade Volume**
-   - Bar chart showing top 15 countries by trade volume
-   - Color-coded by Economic Complexity Index (ECI)
-   - Data source: `country_year_metrics`
-
 ### Running the Dashboard
 
-To run the dashboard locally:
+1. Ensure you have the required dependencies installed:
+   ```bash
+   pip install streamlit plotly pandas google-cloud-bigquery python-dotenv
+   ```
 
-```bash
-streamlit run trade_dashboard.py
-```
+2. Set up your environment variables in the `.env` file with your GCP credentials and project information.
 
-The dashboard will be available at http://localhost:8501 by default.
+3. Start the Streamlit dashboard:
+   ```bash
+   streamlit run trade_dashboard.py
+   ```
+
+4. Access the dashboard in your browser at http://localhost:8501
+
+### Dashboard Features
+
+- **Interactive Filters**: Select specific years, countries, and metrics for customized analysis
+- **Global Trade Overview**: Visualize global trade volume trends and year-over-year changes
+- **Country Comparisons**: Compare trade metrics between countries with interactive charts
+- **Product Analysis**: Explore product complexity and export specialization patterns
+- **Economic Complexity**: Analyze economic complexity indices and their correlation with GDP
+- **Data Tables**: View and download detailed trade data for further analysis
